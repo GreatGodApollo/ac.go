@@ -18,7 +18,7 @@ type Manager struct {
 	IgnoreBots bool
 
 	// The logger for the bot
-	Logger log.Logger
+	Logger *log.Logger
 
 	// The map of Commands in the Manager
 	Commands map[string]*Command
@@ -191,7 +191,7 @@ func removeFromSlice(slice []string, i int) []string {
 	return slice[:len(slice)-1]
 }
 
-func NewManager(logger log.Logger, prefixes, owners []string, errorFunc ManagerOnError) *Manager {
+func NewManager(logger *log.Logger, prefixes, owners []string, errorFunc ManagerOnError) *Manager {
 	return &Manager{
 		Prefixes:  prefixes,
 		Owners:    owners,
