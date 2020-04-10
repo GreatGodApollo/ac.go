@@ -3,7 +3,7 @@ package cmds
 import "github.com/GreatGodApollo/acgo/permissions"
 
 // A CommandFunc is ran whenever a CommandManager gets a message supposed to run the given command.
-type CommandFunc func(CommandContext, []string) error
+type CommandFunc func(Context, []string) error
 type CommandArgFunc func([]string) interface{}
 
 // A Command represents any given command contained in a bot.

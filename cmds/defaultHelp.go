@@ -51,7 +51,7 @@ func helpArgsFunc(args []string) interface{} {
 // It returns an error if any occurred.
 //
 // Usage: {prefix}help [command]
-func helpCommandFunc(ctx CommandContext, args []string) error {
+func helpCommandFunc(ctx Context, args []string) error {
 	argStruct := ctx.Args.(helpCommandArgs)
 	if len(args) > 0 {
 		if command, has, _ := ctx.Manager.GetCommand(argStruct.Command); has {

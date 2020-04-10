@@ -170,11 +170,18 @@ func (cmdm *Manager) CommandHandler(s *discordgo.Session, m *discordgo.MessageCr
 		guild, _ := s.Guild(m.GuildID)
 		member, _ := s.State.Member(m.GuildID, m.Author.ID)
 
+		var args interface{}
+		if command.ProcessArgs != nil {
+			args = command.ProcessArgs(cmd[1:])
+		} else {
+			args = cmd[1:]
+		}
+
 		ctx := Context{
 			Session: s,
 			Event:   m,
 			Manager: cmdm,
-			Args:    cmd[1:],
+			Args:    args,
 			Message: m.Message,
 			User:    m.Author,
 			Channel: channel,
