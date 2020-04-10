@@ -24,7 +24,7 @@ type Command struct {
 	BotPerms  permissions.Permission
 }
 
-func (cmd *Command) OnCommand(ctx *Context) error {
+func (cmd *Command) OnCommand(ctx Context) error {
 	if cmd.SubOnly && len(ctx.Args) > 0 {
 		if cmd.SubCommands != nil {
 			sub := cmd.GetSubCommand(ctx.Args[0])
@@ -95,7 +95,7 @@ func (cmd *Command) removeSubCommand(name string) *Command {
 	return cmd
 }
 
-type CommandFunc func(*Context) error
+type CommandFunc func(Context) error
 
 type CommandType int
 

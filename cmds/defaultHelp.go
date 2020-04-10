@@ -14,7 +14,7 @@ var DefaultHelp = &Command{
 	BotPerms:    permissions.PermissionMessagesSend,
 }
 
-func helpExecute(ctx *Context) error {
+func helpExecute(ctx Context) error {
 	_, err := ctx.Reply("WIP")
 	return err
 }

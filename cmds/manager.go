@@ -27,7 +27,7 @@ type Manager struct {
 	ErrorFunc ManagerOnError
 }
 
-type ManagerOnError func(cmdm *Manager, ctx *Context, err error)
+type ManagerOnError func(cmdm *Manager, ctx Context, err error)
 
 func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.ID == s.State.User.ID {
