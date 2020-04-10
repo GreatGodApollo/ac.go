@@ -27,7 +27,7 @@ type Manager struct {
 	ErrorFunc ManagerOnError
 }
 
-type ManagerOnError func(cmdm *Manager, ctx Context, err error)
+type ManagerOnError func(cmdm *Manager, ctx *Context, err error)
 
 func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.ID == s.State.User.ID {
@@ -40,7 +40,7 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 	var prefix string
 	var contains bool
 	var err error
-	var ctx Context
+	ctx := NewContext()
 	for i := 0; i < len(cmdm.Prefixes); i++ {
 		prefix = cmdm.Prefixes[i]
 		if strings.HasPrefix(m.Content, prefix) {
@@ -55,13 +55,14 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	cmd := strings.Split(strings.TrimPrefix(m.Content, prefix), " ")
 
-	ctx.Manager = cmdm
-	ctx.Message = m.Message
-	ctx.Member = m.Member
-	ctx.Session = s
-	ctx.User = m.Author
-	ctx.Guild, _ = s.Guild(m.GuildID)
-	ctx.Args = cmd[1:]
+	ctx.SetManager(cmdm)
+	ctx.SetMessage(m.Message)
+	ctx.SetMember(m.Member)
+	ctx.SetSession(s)
+	ctx.SetUser(m.Author)
+	g, _ := s.Guild(m.GuildID)
+	ctx.SetGuild(g)
+	ctx.SetArgs(cmd[1:])
 
 	ctx.Channel, _ = s.Channel(m.ChannelID)
 
@@ -177,7 +178,7 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 		// They actually had permissions
 		cmdm.Logger.Printf("P: TRUE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, ctx.Channel.ID, ctx.User.Username, ctx.User.Discriminator, ctx.User.ID, m.Content)
 
-		err = command.OnCommand(&ctx)
+		err = command.OnCommand(ctx)
 		if err != nil {
 			cmdm.ErrorFunc(cmdm, ctx, err)
 		}
