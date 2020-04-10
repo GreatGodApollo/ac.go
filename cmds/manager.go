@@ -91,7 +91,7 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 			if err != nil {
 				cmdm.ErrorFunc(cmdm, ctx, err)
 			}
-			cmdm.Logger.Printf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, m.ChannelID, m.Author.Username, m.Author.Discriminator, m.Author.ID, m.Content)
+			cmdm.Logger.Printf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, ctx.Channel.ID, ctx.User.Username, ctx.User.Discriminator, ctx.User.ID, m.Content)
 			return
 		}
 
@@ -116,7 +116,7 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 			if err != nil {
 				cmdm.ErrorFunc(cmdm, ctx, err)
 			}
-			cmdm.Logger.Printf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, m.ChannelID, m.Author.Username, m.Author.Discriminator, m.Author.ID, m.Content)
+			cmdm.Logger.Printf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, ctx.Channel.ID, ctx.User.Username, ctx.User.Discriminator, ctx.User.ID, m.Content)
 			return
 		}
 
@@ -135,7 +135,7 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 			if err != nil {
 				cmdm.ErrorFunc(cmdm, ctx, err)
 			}
-			cmdm.Logger.Printf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, m.ChannelID, m.Author.Username, m.Author.Discriminator, m.Author.ID, m.Content)
+			cmdm.Logger.Printf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, ctx.Channel.ID, ctx.User.Username, ctx.User.Discriminator, ctx.User.ID, m.Content)
 			return
 		} else if !inDm && command.Type == Direct {
 			embed := &discordgo.MessageEmbed{
@@ -151,7 +151,7 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 			if err != nil {
 				cmdm.ErrorFunc(cmdm, ctx, err)
 			}
-			cmdm.Logger.Printf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, m.ChannelID, m.Author.Username, m.Author.Discriminator, m.Author.ID, m.Content)
+			cmdm.Logger.Printf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, ctx.Channel.ID, ctx.User.Username, ctx.User.Discriminator, ctx.User.ID, m.Content)
 			return
 		}
 
@@ -170,12 +170,12 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 			if err != nil {
 				cmdm.ErrorFunc(cmdm, ctx, err)
 			}
-			cmdm.Logger.Printf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, m.ChannelID, m.Author.Username, m.Author.Discriminator, m.Author.ID, m.Content)
+			cmdm.Logger.Printf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, ctx.Channel.ID, ctx.User.Username, ctx.User.Discriminator, ctx.User.ID, m.Content)
 			return
 		}
 
 		// They actually had permissions
-		cmdm.Logger.Printf("P: TRUE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, m.ChannelID, m.Author.Username, m.Author.Discriminator, m.Author.ID, m.Content)
+		cmdm.Logger.Printf("P: TRUE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, ctx.Channel.ID, ctx.User.Username, ctx.User.Discriminator, ctx.User.ID, m.Content)
 
 		err = command.OnCommand(&ctx)
 		if err != nil {
