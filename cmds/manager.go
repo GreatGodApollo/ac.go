@@ -64,7 +64,8 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 	ctx.SetGuild(g)
 	ctx.SetArgs(cmd[1:])
 
-	ctx.Channel, _ = s.Channel(m.ChannelID)
+	c, _ := s.Channel(m.ChannelID)
+	ctx.SetChannel(c)
 
 	if command := cmdm.GetCommand(cmd[0]); command != nil {
 		var inDm bool
