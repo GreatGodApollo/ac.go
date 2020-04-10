@@ -1,35 +1,35 @@
+/*
+ * Vi - A Discord Bot written in Go
+ * Copyright (C) 2019  Brett Bender
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+// The Commands package both contains the Manager framework and the bot commands.
+// Everything is pretty modular and can be adapted to your own use cases.
 package cmds
 
 import (
 	"github.com/GreatGodApollo/acgo/permissions"
 	"github.com/bwmarrin/discordgo"
-	"log"
+	"github.com/sirupsen/logrus"
 	"strings"
 )
 
-type Manager struct {
-	// The list of prefixes the bot should respond to
-	Prefixes []string
-
-	// The list of IDs the bot should consider to be an owner
-	Owners []string
-
-	// Should the Manager ignore bots?
-	IgnoreBots bool
-
-	// The logger for the bot
-	Logger *log.Logger
-
-	// The map of Commands in the Manager
-	Commands map[string]*Command
-
-	// The function to run when the manager errors
-	ErrorFunc ManagerOnError
-}
-
-type ManagerOnError func(cmdm *Manager, ctx Context, err error)
-
-func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
+// CommandHandler works as the Manager's message listener.
+// It returns nothing.
+func (cmdm *Manager) CommandHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
@@ -40,7 +40,6 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 	var prefix string
 	var contains bool
 	var err error
-	ctx := NewContext()
 	for i := 0; i < len(cmdm.Prefixes); i++ {
 		prefix = cmdm.Prefixes[i]
 		if strings.HasPrefix(m.Content, prefix) {
@@ -55,34 +54,16 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	cmd := strings.Split(strings.TrimPrefix(m.Content, prefix), " ")
 
-	ctx.SetManager(cmdm)
-	ctx.SetMessage(m.Message)
-	ctx.SetMember(m.Member)
-	ctx.SetSession(s)
-	ctx.SetUser(m.Author)
-	g, err := s.Guild(m.GuildID)
-	if err != nil {
-		cmdm.ErrorFunc(cmdm, ctx, err)
-		return
-	}
-	ctx.SetGuild(g)
-	ctx.SetArgs(cmd[1:])
+	channel, _ := s.Channel(m.ChannelID)
 
-	c, err := s.Channel(m.ChannelID)
-	if err != nil {
-		cmdm.ErrorFunc(cmdm, ctx, err)
-		return
-	}
-	ctx.SetChannel(c)
-
-	if command := cmdm.GetCommand(cmd[0]); command != nil {
+	if command, exist, _ := cmdm.GetCommand(cmd[0]); exist {
 		var inDm bool
-		if ctx.Channel.Type == discordgo.ChannelTypeDM {
+		if channel.Type == discordgo.ChannelTypeDM {
 			inDm = true
 		}
 
 		// Check UserPermissions
-		if command.Type != Direct && !inDm && !permissions.Check(s, m.GuildID, m.Author.ID, command.UserPerms) {
+		if command.Type != CommandTypePM && !inDm && !permissions.Check(s, m.GuildID, m.Author.ID, command.UserPermissions) {
 			if permissions.Check(s, m.GuildID, s.State.User.ID, permissions.PermissionMessagesEmbedLinks) {
 				embed := &discordgo.MessageEmbed{
 					Title:       "Insufficient Permissions!",
@@ -99,14 +80,14 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 				}
 			}
 			if err != nil {
-				cmdm.ErrorFunc(cmdm, ctx, err)
+				cmdm.OnErrorFunc(cmdm, Context{}, err)
 			}
-			cmdm.Logger.Printf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, ctx.Channel.ID, ctx.User.Username, ctx.User.Discriminator, ctx.User.ID, m.Content)
+			cmdm.Logger.Debugf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", channel.Name, m.ChannelID, m.Author.Username, m.Author.Discriminator, m.Author.ID, m.Content)
 			return
 		}
 
 		// Check BotPermissions
-		if command.Type != Direct && !inDm && !permissions.Check(s, m.GuildID, s.State.User.ID, command.BotPerms) {
+		if command.Type != CommandTypePM && !inDm && !permissions.Check(s, m.GuildID, s.State.User.ID, command.BotPermissions) {
 			if permissions.Check(s, m.GuildID, s.State.User.ID, permissions.PermissionMessagesEmbedLinks) {
 				embed := &discordgo.MessageEmbed{
 					Title:       "Insufficient Permissions!",
@@ -124,14 +105,14 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 
 			if err != nil {
-				cmdm.ErrorFunc(cmdm, ctx, err)
+				cmdm.OnErrorFunc(cmdm, Context{}, err)
 			}
-			cmdm.Logger.Printf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, ctx.Channel.ID, ctx.User.Username, ctx.User.Discriminator, ctx.User.ID, m.Content)
+			cmdm.Logger.Debugf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", channel.Name, m.ChannelID, m.Author.Username, m.Author.Discriminator, m.Author.ID, m.Content)
 			return
 		}
 
 		// Check if it's the right channel type
-		if inDm && command.Type == Guild {
+		if channel.Type == discordgo.ChannelTypeDM && command.Type == CommandTypeGuild {
 			embed := &discordgo.MessageEmbed{
 				Title:       "Invalid Channel!",
 				Description: "You cannot run this command in a private message.",
@@ -143,11 +124,11 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 
 			if err != nil {
-				cmdm.ErrorFunc(cmdm, ctx, err)
+				cmdm.OnErrorFunc(cmdm, Context{}, err)
 			}
-			cmdm.Logger.Printf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, ctx.Channel.ID, ctx.User.Username, ctx.User.Discriminator, ctx.User.ID, m.Content)
+			cmdm.Logger.Debugf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", channel.Name, m.ChannelID, m.Author.Username, m.Author.Discriminator, m.Author.ID, m.Content)
 			return
-		} else if !inDm && command.Type == Direct {
+		} else if channel.Type == discordgo.ChannelTypeGuildText && command.Type == CommandTypePM {
 			embed := &discordgo.MessageEmbed{
 				Title:       "Invalid Channel!",
 				Description: "You cannot run this command in a guild.",
@@ -159,9 +140,9 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 
 			if err != nil {
-				cmdm.ErrorFunc(cmdm, ctx, err)
+				cmdm.OnErrorFunc(cmdm, Context{}, err)
 			}
-			cmdm.Logger.Printf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, ctx.Channel.ID, ctx.User.Username, ctx.User.Discriminator, ctx.User.ID, m.Content)
+			cmdm.Logger.Debugf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", channel.Name, m.ChannelID, m.Author.Username, m.Author.Discriminator, m.Author.ID, m.Content)
 			return
 		}
 
@@ -178,105 +159,110 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 
 			if err != nil {
-				cmdm.ErrorFunc(cmdm, ctx, err)
+				cmdm.OnErrorFunc(cmdm, Context{}, err)
 			}
-			cmdm.Logger.Printf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, ctx.Channel.ID, ctx.User.Username, ctx.User.Discriminator, ctx.User.ID, m.Content)
+			cmdm.Logger.Debugf("P: FALSE C: %s[%s] U: %s#%s[%s] M: %s", channel.Name, m.ChannelID, m.Author.Username, m.Author.Discriminator, m.Author.ID, m.Content)
 			return
 		}
 
 		// They actually had permissions
-		cmdm.Logger.Printf("P: TRUE C: %s[%s] U: %s#%s[%s] M: %s", ctx.Channel.Name, ctx.Channel.ID, ctx.User.Username, ctx.User.Discriminator, ctx.User.ID, m.Content)
+		cmdm.Logger.Debugf("P: TRUE C: %s[%s] U: %s#%s[%s] M: %s", channel.Name, m.ChannelID, m.Author.Username, m.Author.Discriminator, m.Author.ID, m.Content)
+		guild, _ := s.Guild(m.GuildID)
+		member, _ := s.State.Member(m.GuildID, m.Author.ID)
 
-		err = command.OnCommand(ctx)
+		ctx := Context{
+			Session: s,
+			Event:   m,
+			Manager: cmdm,
+			Args:    cmd[1:],
+			Message: m.Message,
+			User:    m.Author,
+			Channel: channel,
+			Guild:   guild,
+			Member:  member,
+		}
+
+		err = command.Run(ctx, cmd[1:])
 		if err != nil {
-			cmdm.ErrorFunc(cmdm, ctx, err)
+			cmdm.OnErrorFunc(cmdm, ctx, err)
 		}
 	}
-
 }
 
-func removeFromSlice(slice []string, i int) []string {
-	slice[len(slice)-1], slice[i] = slice[i], slice[len(slice)-1]
-	return slice[:len(slice)-1]
-}
-
-func NewManager(logger *log.Logger, prefixes, owners []string, errorFunc ManagerOnError) *Manager {
-	return &Manager{
-		Prefixes:  prefixes,
-		Owners:    owners,
-		Logger:    logger,
-		ErrorFunc: errorFunc,
-		Commands:  make(map[string]*Command),
-	}
-}
-
-func (cmdm *Manager) AddPrefix(prefix string) *Manager {
+// AddPrefix adds a new prefix to the Manager's prefix list.
+// It returns nothing.
+func (cmdm *Manager) AddPrefix(prefix string) {
 	cmdm.Prefixes = append(cmdm.Prefixes, prefix)
-	return cmdm
 }
 
-func (cmdm *Manager) RemovePrefix(prefix string) *Manager {
+// RemovePrefix removes a prefix from the Manager's prefix list.
+// It returns nothing.
+func (cmdm *Manager) RemovePrefix(prefix string) {
 	for i, v := range cmdm.Prefixes {
 		if v == prefix {
-			cmdm.Prefixes = removeFromSlice(cmdm.Prefixes, i)
+			cmdm.Prefixes = append(cmdm.Prefixes[:i], cmdm.Prefixes[i+1:]...)
+			break
 		}
 	}
-	return cmdm
 }
 
-func (cmdm *Manager) SetPrefixes(prefixes []string) *Manager {
+// SetPrefixes sets the Manager's prefix list.
+// It returns nothing.
+func (cmdm *Manager) SetPrefixes(prefixes []string) {
 	cmdm.Prefixes = prefixes
-	return cmdm
 }
 
+// GetPrefixes gets the Manager's prefix list.
+// It returns a string array.
 func (cmdm *Manager) GetPrefixes() []string {
 	return cmdm.Prefixes
 }
 
-func (cmdm *Manager) RegisterCommand(cmd *Command) *Manager {
-	if cmd.Name != "" {
-		cmdm.addCommand(cmd.Name, cmd)
-		if cmd.Aliases != nil {
-			for _, v := range cmd.Aliases {
-				cmdm.addCommand(v, cmd)
+// AddNewCommand adds a new command to the Manager's command list.
+// It returns nothing.
+func (cmdm *Manager) AddNewCommand(name string, aliases []string, desc string, owneronly, hidden bool, userperms, botperms permissions.Permission,
+	cmdType CommandType, run CommandFunc) {
+	var cmd *Command
+	if _, exists, _ := cmdm.GetCommand(name); !exists {
+		cmd = &Command{
+			name, aliases, desc, owneronly, hidden, userperms, botperms, cmdType, run, nil,
+		}
+	}
+	*cmdm.Commands = append(*cmdm.Commands, cmd)
+}
+
+// AddCommand adds an existent command to the Manager's command list.
+// It returns nothing.
+func (cmdm *Manager) AddCommand(cmd *Command) {
+	if _, exists, _ := cmdm.GetCommand(cmd.Name); !exists {
+		*cmdm.Commands = append(*cmdm.Commands, cmd)
+	}
+}
+
+func (cmdm *Manager) GetCommand(name string) (cmd *Command, exists bool, index int) {
+	for i, c := range *cmdm.Commands {
+		if c.Name == name {
+			return c, true, i
+		}
+		for _, a := range c.Aliases {
+			if a == name {
+				return c, true, i
 			}
 		}
 	}
-	return cmdm
+	return nil, false, 0
 }
 
-func (cmdm *Manager) UnregisterCommand(cmd *Command) *Manager {
-	if cmd != nil {
-		if cmd.Name != "" {
-			cmdm.removeCommand(cmd.Name)
-		}
-		if cmd.Aliases != nil {
-			for _, c := range cmd.Aliases {
-				cmdm.removeCommand(c)
-			}
-		}
+// RemoveCommand removes a command from the Manager's command list.
+// It returns nothing.
+func (cmdm *Manager) RemoveCommand(name string) {
+	if _, exists, index := cmdm.GetCommand(name); exists {
+		*cmdm.Commands = RemoveCommandFromSlice(*cmdm.Commands, index)
 	}
-	return cmdm
 }
 
-func (cmdm *Manager) addCommand(name string, cmd *Command) *Manager {
-	cmdm.Commands[name] = cmd
-	return cmdm
-}
-
-func (cmdm *Manager) removeCommand(name string) *Manager {
-	delete(cmdm.Commands, name)
-	return cmdm
-}
-
-func (cmdm *Manager) GetCommand(name string) *Command {
-	val, ok := cmdm.Commands[name]
-	if ok {
-		return val
-	}
-	return nil
-}
-
+// IsOwner checks if a user ID is is in the owner list.
+// It returns a bool.
 func (cmdm *Manager) IsOwner(id string) bool {
 	for _, o := range cmdm.Owners {
 		if id == o {
@@ -284,4 +270,46 @@ func (cmdm *Manager) IsOwner(id string) bool {
 		}
 	}
 	return false
+}
+
+// NewManager instantiates a new Manager.
+// It returns a Manager.
+func NewManager(l *logrus.Logger, ignoreBots bool, errorFunc ManagerOnErrorFunc) Manager {
+	return Manager{
+		Prefixes:    []string{},
+		Owners:      []string{},
+		Commands:    &[]*Command{},
+		Logger:      l,
+		IgnoreBots:  ignoreBots,
+		OnErrorFunc: errorFunc,
+	}
+}
+
+// A Manager represents a set of prefixes, owners and commands, with some extra utility to create a command handler.
+type Manager struct {
+	// The array of prefixes a Manager will respond to.
+	Prefixes []string
+
+	// The array of IDs that will be considered a bot owner.
+	Owners []string
+
+	// The bot instance Logger.
+	Logger *logrus.Logger
+
+	// The map of Commands in the Manager.
+	Commands *[]*Command
+
+	// If the Manager ignores bots or not.
+	IgnoreBots bool
+
+	// The function that will be ran when the Manager encounters an error.
+	OnErrorFunc ManagerOnErrorFunc
+}
+
+// A ManagerOnErrorFunc is a function that will run whenever the Manager encounters an error.
+type ManagerOnErrorFunc func(cmdm *Manager, ctx Context, err error)
+
+func RemoveCommandFromSlice(s []*Command, i int) []*Command {
+	s[len(s)-1], s[i] = s[i], s[len(s)-1]
+	return s[:len(s)-1]
 }

@@ -1,108 +1,54 @@
 package cmds
 
-import (
-	"errors"
-	"github.com/GreatGodApollo/acgo/permissions"
-)
+import "github.com/GreatGodApollo/acgo/permissions"
 
+// A CommandFunc is ran whenever a CommandManager gets a message supposed to run the given command.
+type CommandFunc func(CommandContext, []string) error
+type CommandArgFunc func([]string) interface{}
+
+// A Command represents any given command contained in a bot.
 type Command struct {
-	Name        string
-	Aliases     []string
+	// The name of the command (What it will be triggered by).
+	Name string
+
+	// Command aliases
+	Aliases []string
+
+	// The command's description.
 	Description string
 
+	// If the command is only able to be ran by an owner.
 	OwnerOnly bool
-	Hidden    bool
 
+	// If the command is hidden from help.
+	Hidden bool
+
+	// The permissions the user is required to have to execute the command.
+	UserPermissions permissions.Permission
+
+	// The permissions the bot is required to have to execute the command.
+	BotPermissions permissions.Permission
+
+	// The CommandType designates where the command can be ran.
 	Type CommandType
 
-	Execute CommandFunc
+	// The function that will be executed whenever a message fits the criteria to execute the command.
+	Run CommandFunc
 
-	SubCommands map[string]*Command
-	SubOnly     bool
-
-	UserPerms permissions.Permission
-	BotPerms  permissions.Permission
+	// The function that will be ran to process arguments
+	ProcessArgs CommandArgFunc
 }
 
-func (cmd *Command) OnCommand(ctx Context) error {
-	if cmd.SubOnly && len(ctx.Args) > 0 {
-		if cmd.SubCommands != nil {
-			sub := cmd.GetSubCommand(ctx.Args[0])
-			if sub != nil {
-				ctx.Args = ctx.Args[1:]
-				return sub.OnCommand(ctx)
-			} else {
-				return errors.New("unknown sub")
-			}
-		} else {
-			return errors.New("no subs")
-		}
-	} else if cmd.SubOnly {
-		return errors.New("must provide sub")
-	} else {
-		if len(ctx.Args) > 0 {
-			if sub := cmd.GetSubCommand(ctx.Args[0]); sub != nil {
-				return sub.OnCommand(ctx)
-			}
-		}
-		return cmd.Execute(ctx)
-	}
-}
-
-func (cmd *Command) RegisterSubCommand(c *Command) *Command {
-	if c != nil {
-		if c.Name != "" {
-			cmd.addSubCommand(c.Name, c)
-		}
-		if c.Aliases != nil {
-			for _, v := range c.Aliases {
-				cmd.addSubCommand(v, c)
-			}
-		}
-	}
-	return cmd
-}
-
-func (cmd *Command) UnregisterSubCommand(c *Command) *Command {
-	if cmd != nil {
-		if cmd.Name != "" {
-			cmd.removeSubCommand(cmd.Name)
-		}
-		if cmd.Aliases != nil {
-			for _, c := range cmd.Aliases {
-				cmd.removeSubCommand(c)
-			}
-		}
-	}
-	return cmd
-}
-
-func (cmd *Command) GetSubCommand(name string) *Command {
-	val, ok := cmd.SubCommands[name]
-	if ok {
-		return val
-	}
-	return nil
-}
-
-func (cmd *Command) addSubCommand(name string, c *Command) *Command {
-	cmd.SubCommands[name] = c
-	return cmd
-}
-
-func (cmd *Command) removeSubCommand(name string) *Command {
-	delete(cmd.SubCommands, name)
-	return cmd
-}
-
-type CommandFunc func(Context) error
-
+// A CommandType represents the locations commands can be used.
 type CommandType int
 
 const (
-	Direct CommandType = iota
+	// A Command that is only supposed to run in a personal message
+	CommandTypePM CommandType = iota
 
-	Guild
+	// A command that is only supposed to run in a Guild
+	CommandTypeGuild
 
-	Everywhere
+	// A Command that is able to run anywhere
+	CommandTypeEverywhere
 )
