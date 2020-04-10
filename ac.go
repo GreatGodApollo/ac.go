@@ -3,29 +3,30 @@ package main
 import (
 	"github.com/GreatGodApollo/acgo/cmds"
 	"github.com/bwmarrin/discordgo"
+	"github.com/sirupsen/logrus"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
-var logger = &log.Logger{}
+var logger = &logrus.Logger{}
 
 func main() {
 	log.Println("Starting testBot")
 
-	client, err := discordgo.New("Bot " + "NjUwMTQ1OTY0MDQwMTI2NDcx.XgxFgQ.IlWIFSBHI2WHMFQlqeWx9_IzpiQ")
+	client, err := discordgo.New("Bot " + "NjUwMTQ1OTY0MDQwMTI2NDcx.XpD3cA.fsuD95W6txaipp3IcMS_qzJqLSQ")
 	if err != nil {
 		log.Fatal(err.Error())
 		return
 	}
 
-	manager := cmds.NewManager(logger, []string{}, []string{}, CommandErrorFunc)
+	manager := cmds.NewManager(logger, true, CommandErrorFunc)
 	manager.AddPrefix("t.")
 
-	manager.RegisterCommand(cmds.DefaultHelp)
+	manager.AddCommand(cmds.DefaultHelp(0x532c60))
 
-	client.AddHandler(manager.Handle)
+	client.AddHandler(manager.CommandHandler)
 
 	err = client.Open()
 	if err != nil {

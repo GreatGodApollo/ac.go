@@ -7,7 +7,7 @@ import (
 )
 
 // A Context is passed to a CommandRunFunc. It contains the information needed for a command to execute.
-type CommandContext struct {
+type Context struct {
 	// The connection to Discord.
 	Session *discordgo.Session
 
@@ -36,23 +36,23 @@ type CommandContext struct {
 	Member *discordgo.Member
 }
 
-// Reply sends a message to the channel a CommandContext was initiated for.
-func (ctx *CommandContext) Reply(message string) (*discordgo.Message, error) {
+// Reply sends a message to the channel a Context was initiated for.
+func (ctx *Context) Reply(message string) (*discordgo.Message, error) {
 	return ctx.Session.ChannelMessageSend(ctx.Channel.ID, message)
 }
 
-// ReplyEmbed sends an embed to the channel a CommandContext was initiated for.
-func (ctx *CommandContext) ReplyEmbed(embed *discordgo.MessageEmbed) (*discordgo.Message, error) {
+// ReplyEmbed sends an embed to the channel a Context was initiated for.
+func (ctx *Context) ReplyEmbed(embed *discordgo.MessageEmbed) (*discordgo.Message, error) {
 	return ctx.Session.ChannelMessageSendEmbed(ctx.Channel.ID, embed)
 }
 
-// ReplyFile sends a file to the channel a CommandContext was initiated for.
-func (ctx *CommandContext) ReplyFile(filename string, file io.Reader) (*discordgo.Message, error) {
+// ReplyFile sends a file to the channel a Context was initiated for.
+func (ctx *Context) ReplyFile(filename string, file io.Reader) (*discordgo.Message, error) {
 	return ctx.Session.ChannelFileSend(ctx.Channel.ID, filename, file)
 }
 
-// PurgeMessages purges 'x' number of messages from the Channel a CommandContext was initiated for.
-func (ctx *CommandContext) PurgeMessages(num int) error {
+// PurgeMessages purges 'x' number of messages from the Channel a Context was initiated for.
+func (ctx *Context) PurgeMessages(num int) error {
 	if num >= 1 && num <= 100 {
 		msgs, err := ctx.Session.ChannelMessages(ctx.Channel.ID, num, "", "", "")
 		if err != nil {
