@@ -60,11 +60,19 @@ func (cmdm *Manager) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 	ctx.SetMember(m.Member)
 	ctx.SetSession(s)
 	ctx.SetUser(m.Author)
-	g, _ := s.Guild(m.GuildID)
+	g, err := s.Guild(m.GuildID)
+	if err != nil {
+		cmdm.ErrorFunc(cmdm, ctx, err)
+		return
+	}
 	ctx.SetGuild(g)
 	ctx.SetArgs(cmd[1:])
 
-	c, _ := s.Channel(m.ChannelID)
+	c, err := s.Channel(m.ChannelID)
+	if err != nil {
+		cmdm.ErrorFunc(cmdm, ctx, err)
+		return
+	}
 	ctx.SetChannel(c)
 
 	if command := cmdm.GetCommand(cmd[0]); command != nil {
